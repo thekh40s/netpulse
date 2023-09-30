@@ -2,6 +2,8 @@
 
 NetPulse is an ICMP SHELL tool that does not require root access on the victim's side. This guide provides detailed information on how to use NetPulse.
 
+<img src="https://github.com/thekh40s/netpulse/assets/129444003/110df8c1-6116-488a-9012-830512eff5c3" width="800">
+
 ## Advantages of NetPulse
 - **No Root Access Required:** NetPulse eliminates the need for root access on the victim's side.
 - **Camouflage:** ICMP traffic is common and often allowed in networks and firewalls.
