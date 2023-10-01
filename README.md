@@ -49,6 +49,10 @@ If all the necessary tools are installed, run the [servnp.sh](/servnp.sh) file:
 $ chmod +x servnp.sh && ./servnp.sh <attacker-IP>
 ```
 
+# Screenshot
+
+<img src="https://github.com/thekh40s/netpulse/assets/129444003/38875260-9f1b-4cfb-b5ef-178f31dddfbf" width="800">
+
 # Buy me a Coffee :p
 
 <a href="https://www.buymeacoffee.com/ryan.r" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
