@@ -15,7 +15,7 @@ show_help() {
     echo '   | |\  || |___  | | | |   | |_| | |____/\__/ / |___ '
     echo '   \_| \_/\____/  \_/ \_|    \___/\_____/\____/\____/ '
     echo ""
-    echo "   v$version - github.com/thekh40s/netpulse           "
+    echo "   v$version - github.com/ch0d/netpulse           "
     echo "                                                      "
     echo ""
     echo "usage: $0 [options] <host>"
